@@ -1,0 +1,5 @@
+bin/
+obj/
+.vs/
+*.user
+# local.settings.json はエミュレーター用の値しか含まないため、検証用途として管理対象にしている

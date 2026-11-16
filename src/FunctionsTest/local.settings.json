@@ -1,0 +1,42 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+
+    "StorageConnection": "UseDevelopmentStorage=true",
+    "ServiceBusConnection": "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
+    "EventHubsConnection": "Endpoint=sb://localhost:5673;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
+    "CosmosDbConnection": "AccountEndpoint=http://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
+
+    "SqlConnection": "Server=localhost,1433;Database=SampleDb;User Id=sa;Password=Local_Dev_Passw0rd!;TrustServerCertificate=True;",
+    "KafkaBrokerList": "localhost:9092",
+    "RabbitMQConnection": "amqp://guest:guest@localhost:5674",
+    "SignalRConnection": "Endpoint=http://localhost;Port=8888;AccessKey=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGH;Version=1.0;",
+
+    "TimerSchedule": "0 */1 * * * *",
+
+    "AzureWebJobs.ServiceBusQueueTrigger.Disabled": "true",
+    "AzureWebJobs.ServiceBusTopicTrigger.Disabled": "true",
+    "AzureWebJobs.ServiceBusDeadLetterTrigger.Disabled": "true",
+    "AzureWebJobs.ServiceBusSend.Disabled": "true",
+    "AzureWebJobs.EventHubBatchTrigger.Disabled": "true",
+    "AzureWebJobs.EventHubSend.Disabled": "true",
+    "AzureWebJobs.EventGridCloudEventTrigger.Disabled": "true",
+    "AzureWebJobs.EventGridSchemaTrigger.Disabled": "true",
+    "AzureWebJobs.CosmosDbChangeFeedTrigger.Disabled": "true",
+    "AzureWebJobs.CosmosDbCreateItem.Disabled": "true",
+    "AzureWebJobs.CosmosDbGetItem.Disabled": "true",
+    "AzureWebJobs.SqlInsertItem.Disabled": "true",
+    "AzureWebJobs.SqlGetItems.Disabled": "true",
+    "AzureWebJobs.SqlTriggerItems.Disabled": "true",
+    "AzureWebJobs.KafkaSend.Disabled": "true",
+    "AzureWebJobs.KafkaTrigger.Disabled": "true",
+    "AzureWebJobs.RabbitMQSend.Disabled": "true",
+    "AzureWebJobs.RabbitMQTrigger.Disabled": "true",
+    "AzureWebJobs.SignalRNegotiate.Disabled": "true",
+    "AzureWebJobs.SignalRBroadcast.Disabled": "true",
+    "AzureWebJobs.SignalRMessagesTrigger.Disabled": "true",
+    "AzureWebJobs.SignalRConnectionsTrigger.Disabled": "true"
+  }
+}

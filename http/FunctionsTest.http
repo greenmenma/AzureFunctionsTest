@@ -1,0 +1,266 @@
+### Azure Functions 検証用リクエスト集
+### VS2026 では各リクエストの上に出る「要求の送信」をクリックして実行する
+
+@host = http://localhost:7071
+@api = {{host}}/api
+
+############################################################
+# HTTP
+############################################################
+
+### GET + クエリ文字列
+GET {{api}}/hello?name=Functions
+
+### ルートパラメーター（id は int 制約、category は省略可）
+GET {{api}}/items/42/books
+
+### ルート制約違反 → 404 になることを確認
+GET {{api}}/items/abc
+
+### POST JSON（正常）
+POST {{api}}/echo
+Content-Type: application/json
+
+{ "id": "1", "text": "hello", "createdAt": "2026-11-16T00:00:00Z" }
+
+### POST JSON（text 欠落 → 400）
+POST {{api}}/echo
+Content-Type: application/json
+
+{ "id": "1" }
+
+### POST JSON（不正な JSON → 400）
+POST {{api}}/echo
+Content-Type: application/json
+
+{ not json
+
+### 認証レベル Function（ローカルではキー不要）
+GET {{api}}/secure
+
+### 例外 → 500 とミドルウェアのエラーログを確認
+GET {{api}}/throw
+
+### HTTP → Queue（sample-queue）→ QueueTrigger → Blob（results/）の連鎖
+POST {{api}}/enqueue
+Content-Type: text/plain
+
+chain test
+
+############################################################
+# Storage: Queue（Azure Storage Explorer などで直接投入も可）
+#   sample-queue-sdk に "fail" を含むメッセージを入れると 3 回失敗後に poison へ移る
+############################################################
+
+############################################################
+# Storage: Blob
+############################################################
+
+### Blob 出力（uploads/hello.txt に保存 → BlobTrigger が起動）
+PUT {{api}}/blobs/hello.txt
+Content-Type: text/plain
+
+Hello Blob!
+
+### Blob 入力（BlobClient）
+GET {{api}}/blobs/hello.txt
+
+### Blob 入力（存在しない → 404）
+GET {{api}}/blobs/not-found.txt
+
+### Blob 一覧（BlobContainerClient）
+GET {{api}}/blobs
+
+############################################################
+# Storage: Table
+############################################################
+
+### Table 出力
+POST {{api}}/tables/pk1
+Content-Type: text/plain
+
+table row
+
+### Table 一覧（TableClient）
+GET {{api}}/tables/pk1
+
+### Table 1 件取得（rowKey は上の応答からコピー）
+GET {{api}}/tables/pk1/REPLACE_ROW_KEY
+
+############################################################
+# Durable Functions
+#   応答の statusQueryGetUri を GET すると進捗・結果を確認できる
+############################################################
+
+### チェーン
+POST {{api}}/durable/start/ChainingOrchestrator
+
+### ファンアウト / ファンイン（Square がランダムに失敗 → リトライ）
+POST {{api}}/durable/start/FanOutFanInOrchestrator
+
+### モニター（約 15 秒で完了）
+POST {{api}}/durable/start/MonitorOrchestrator
+
+### サブオーケストレーション
+POST {{api}}/durable/start/ParentOrchestrator
+
+### 承認待ち（30 秒以内に下の承認を送らないと TimedOut）
+POST {{api}}/durable/start/ApprovalOrchestrator
+
+### 承認イベント送信（instanceId は上の応答の id）
+POST {{api}}/durable/approve/REPLACE_INSTANCE_ID?approved=true
+
+### エンティティ: 加算
+POST {{api}}/durable/counter/c1/add?value=5
+
+### エンティティ: リセット
+POST {{api}}/durable/counter/c1/reset
+
+### エンティティ: 状態取得
+GET {{api}}/durable/counter/c1
+
+############################################################
+# Service Bus（docker compose --profile servicebus up -d、local.settings.json で Disabled を解除）
+############################################################
+
+### キュー + トピックへ送信
+POST {{api}}/servicebus
+Content-Type: text/plain
+
+hello service bus
+
+### "fail" を含む → デッドレターへ → ServiceBusDeadLetterTrigger が起動
+POST {{api}}/servicebus
+Content-Type: text/plain
+
+please fail
+
+############################################################
+# Event Hubs（docker compose --profile eventhubs up -d、Disabled を解除）
+############################################################
+
+### 5 件送信
+POST {{api}}/eventhubs?count=5
+
+############################################################
+# Cosmos DB（docker compose --profile cosmos up -d、Disabled を解除）
+############################################################
+
+### 作成（DB / コンテナーは自動作成）→ 変更フィード トリガーが起動
+POST {{api}}/cosmos/books
+Content-Type: text/plain
+
+cosmos item
+
+### 1 件取得（id は上の応答からコピー）
+GET {{api}}/cosmos/books/REPLACE_ID
+
+############################################################
+# Event Grid（エミュレーターなし。Webhook エンドポイントへ直接 POST する。Disabled を解除）
+############################################################
+
+### CloudEvents スキーマ
+POST {{host}}/runtime/webhooks/EventGrid?functionName=EventGridCloudEventTrigger
+Content-Type: application/cloudevents+json
+aeg-event-type: Notification
+
+{
+  "specversion": "1.0",
+  "type": "Sample.Created",
+  "source": "/local/test",
+  "id": "evt-001",
+  "time": "2026-11-16T00:00:00Z",
+  "subject": "items/1",
+  "datacontenttype": "application/json",
+  "data": { "message": "hello cloud event" }
+}
+
+### Event Grid スキーマ（配列で送る）
+POST {{host}}/runtime/webhooks/EventGrid?functionName=EventGridSchemaTrigger
+Content-Type: application/json
+aeg-event-type: Notification
+
+[
+  {
+    "id": "evt-002",
+    "eventType": "Sample.Created",
+    "subject": "items/2",
+    "eventTime": "2026-11-16T00:00:00Z",
+    "dataVersion": "1.0",
+    "data": { "message": "hello event grid" }
+  }
+]
+
+############################################################
+# SQL（docker compose --profile sql up -d、Disabled を解除）
+############################################################
+
+### 追加（upsert）→ SQL トリガーが起動（変更の追跡のポーリング間隔は既定 1 秒）
+POST {{api}}/sql/books
+Content-Type: text/plain
+
+sql item
+
+### パラメーター付きクエリで取得
+GET {{api}}/sql/books
+
+############################################################
+# Kafka（docker compose --profile kafka up -d、Disabled を解除）
+############################################################
+
+### 送信 → KafkaTrigger がバッチで受信
+POST {{api}}/kafka
+Content-Type: text/plain
+
+hello kafka
+
+############################################################
+# RabbitMQ（docker compose --profile rabbitmq up -d、Disabled を解除）
+#   管理画面: http://localhost:15672（guest / guest）
+############################################################
+
+### 送信 → RabbitMQTrigger が受信
+POST {{api}}/rabbitmq
+Content-Type: text/plain
+
+hello rabbitmq
+
+############################################################
+# SignalR（asrs-emulator を起動、Disabled を解除）
+#   ブラウザーで http://localhost:7071/api/signalr/client を開いてから下を実行
+############################################################
+
+### negotiate（接続情報の取得）
+POST {{api}}/negotiate
+
+### サーバーから全クライアントへブロードキャスト
+POST {{api}}/signalr/broadcast
+Content-Type: text/plain
+
+hello signalr
+
+############################################################
+# MCP（追加サービス不要。通常は MCP クライアントから接続する）
+#   エンドポイント: http://localhost:7071/runtime/webhooks/mcp
+############################################################
+
+### initialize
+POST {{host}}/runtime/webhooks/mcp
+Content-Type: application/json
+Accept: application/json, text/event-stream
+
+{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": { "name": "http-file", "version": "1.0" } } }
+
+### ツール一覧（応答ヘッダー Mcp-Session-Id を付ける必要がある場合は追記する）
+POST {{host}}/runtime/webhooks/mcp
+Content-Type: application/json
+Accept: application/json, text/event-stream
+
+{ "jsonrpc": "2.0", "id": 2, "method": "tools/list" }
+
+### ツール呼び出し
+POST {{host}}/runtime/webhooks/mcp
+Content-Type: application/json
+Accept: application/json, text/event-stream
+
+{ "jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": { "name": "add", "arguments": { "a": 1.5, "b": 2 } } }

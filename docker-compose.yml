@@ -1,0 +1,110 @@
+# ローカル検証用エミュレーター一式
+#   docker compose up -d                       … Azurite のみ（HTTP / Timer / Storage / Durable / MCP 用）
+#   docker compose --profile servicebus up -d  … + Service Bus エミュレーター
+#   docker compose --profile eventhubs up -d   … + Event Hubs エミュレーター
+#   docker compose --profile cosmos up -d      … + Cosmos DB エミュレーター（Linux vNext）
+#   docker compose --profile sql up -d         … + SQL Server（SQL トリガー用。init.sql を自動実行）
+#   docker compose --profile kafka up -d       … + Apache Kafka
+#   docker compose --profile rabbitmq up -d    … + RabbitMQ
+#   docker compose --profile all up -d         … すべて
+# ※ SignalR エミュレーターは Docker ではなく dotnet tool で起動する（README 参照）
+name: azure-functions-test
+
+x-sql-password: &sql-password "${SQL_PASSWORD:-Local_Dev_Passw0rd!}"
+
+services:
+  # Blob / Queue / Table（AzureWebJobsStorage、Durable の状態保存、Event Hubs のチェックポイント）
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck --loose
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    volumes:
+      - azurite-data:/data
+
+  # SQL Server（Service Bus エミュレーターの内部ストアと、SQL トリガー検証用を兼ねる）
+  sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    profiles: ["servicebus", "sql", "all"]
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: *sql-password
+    ports:
+      - "1433:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      retries: 12
+      start_period: 20s
+
+  # SampleDb / dbo.Items と変更の追跡を作成する（1 回実行して終了）
+  sql-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    profiles: ["sql", "all"]
+    depends_on:
+      sql:
+        condition: service_healthy
+    environment:
+      MSSQL_SA_PASSWORD: *sql-password
+    volumes:
+      - ./emulators/sql/init.sql:/init.sql:ro
+    entrypoint: ["/bin/bash", "-c", "/opt/mssql-tools18/bin/sqlcmd -C -S sql -U sa -P \"$$MSSQL_SA_PASSWORD\" -i /init.sql"]
+    restart: "no"
+
+  servicebus:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    profiles: ["servicebus", "all"]
+    depends_on:
+      sql:
+        condition: service_healthy
+    environment:
+      SQL_SERVER: sql
+      MSSQL_SA_PASSWORD: *sql-password
+      ACCEPT_EULA: "Y"
+      SQL_WAIT_INTERVAL: "5"
+    volumes:
+      - ./emulators/servicebus/Config.json:/ServiceBus_Emulator/ConfigFiles/Config.json
+    ports:
+      - "5672:5672"   # AMQP
+      - "5300:5300"   # 管理 / ヘルスチェック
+
+  eventhubs:
+    image: mcr.microsoft.com/azure-messaging/eventhubs-emulator:latest
+    profiles: ["eventhubs", "all"]
+    depends_on:
+      - azurite
+    environment:
+      BLOB_SERVER: azurite
+      METADATA_SERVER: azurite
+      ACCEPT_EULA: "Y"
+    volumes:
+      - ./emulators/eventhubs/Config.json:/Eventhubs_Emulator/ConfigFiles/Config.json
+    ports:
+      - "5673:5672"   # AMQP（Service Bus と重ならないようホスト側は 5673）
+
+  cosmos:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+    profiles: ["cosmos", "all"]
+    command: --protocol http
+    ports:
+      - "8081:8081"   # データ プレーン
+      - "1234:1234"   # データ エクスプローラー（http://localhost:1234）
+
+  # Apache Kafka（KRaft のシングルノード。トピックは自動作成）
+  kafka:
+    image: apache/kafka:4.1.0
+    profiles: ["kafka", "all"]
+    ports:
+      - "9092:9092"
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    profiles: ["rabbitmq", "all"]
+    ports:
+      - "5674:5672"     # AMQP（Service Bus と重ならないようホスト側は 5674）
+      - "15672:15672"   # 管理画面 http://localhost:15672（guest / guest）
+
+volumes:
+  azurite-data:
