@@ -8,12 +8,20 @@ namespace FunctionsTest.Functions.Timer;
 /// </summary>
 public sealed class TimerFunctions(ILogger<TimerFunctions> logger)
 {
+#if DEBUG
+    // デバッグ時は F5 直後にも 1 回実行して確認しやすくする
+    private const bool RunOnStartup = true;
+#else
+    // Azure ではコールド スタートやスケールアウトのたびに実行されてしまうため無効
+    private const bool RunOnStartup = false;
+#endif
+
     /// <summary>
     /// CRON 式をアプリ設定から読む（%TimerSchedule%）。
-    /// RunOnStartup = true なので、F5 直後にも 1 回実行される（本番では false 推奨）。
+    /// Debug ビルドでは RunOnStartup により起動直後にも 1 回実行される。
     /// </summary>
     [Function(nameof(TimerFromSetting))]
-    public void TimerFromSetting([TimerTrigger("%TimerSchedule%", RunOnStartup = true)] TimerInfo timer)
+    public void TimerFromSetting([TimerTrigger("%TimerSchedule%", RunOnStartup = RunOnStartup)] TimerInfo timer)
     {
         logger.LogInformation("TimerFromSetting: 実行 {Now}, 次回 {Next}, 遅延={IsPastDue}",
             DateTimeOffset.Now, timer.ScheduleStatus?.Next, timer.IsPastDue);

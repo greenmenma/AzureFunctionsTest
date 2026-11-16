@@ -3,3 +3,6 @@ obj/
 .vs/
 *.user
 # local.settings.json はエミュレーター用の値しか含まないため、検証用途として管理対象にしている
+# Azure 検証用（キーやリソース名を含む）
+*.env.json.user
+scripts/azure/.deploy-state.json

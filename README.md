@@ -99,9 +99,11 @@ Azure Functions（関数アプリ）の主なトリガー / バインドを一�
   関数アプリを起動したら、ブラウザーで http://localhost:7071/api/signalr/client を開きます。送信するとトリガー経由でエコーされ、`POST /api/signalr/broadcast` を送るとブロードキャストが届きます。
 - **MCP**: 追加のサービスは不要です。`.vscode/mcp.json` に接続先（`http://localhost:7071/runtime/webhooks/mcp`）を書いてあるので、VS Code の GitHub Copilot（エージェント モード）などからツールを呼べます。Azure 上では、システム キー `mcp_extension` をヘッダー `x-functions-key` に付ける必要があります。
 
-## Azure の実リソースで検証する場合
+## Azure に発行して検証する場合
 
-`local.settings.json` の `StorageConnection` / `ServiceBusConnection` / `EventHubsConnection` / `CosmosDbConnection` を実リソースの接続文字列に差し替えます。Managed Identity で接続する場合は、`<名前>__fullyQualifiedNamespace`（Service Bus / Event Hubs）や `<名前>__accountEndpoint`（Cosmos DB）の形式で設定します。
+Azure（Flex Consumption プラン）への発行、発行後の動作確認、費用の確認、後片付けまでの手順は **[docs/azure-verification.md](docs/azure-verification.md)** にまとめています。リソースの作成・設定・削除は `scripts/azure/` の PowerShell スクリプトで行えます。
+
+`http/FunctionsTest.http` は、VS2026 の環境ドロップダウンで `local` / `azure` を切り替えると、同じリクエストをローカルにも Azure にも送れます。
 
 ## 構成
 
@@ -111,11 +113,14 @@ nuget.config                  … フィードを nuget.org のみに固定
 docker-compose.yml            … エミュレーター
 emulators/                    … Service Bus / Event Hubs / SignalR エミュレーターの定義、SQL 初期化スクリプト
 http/FunctionsTest.http       … 動作確認用のリクエスト集
+http/http-client.env.json     … .http の接続先（local / azure）
+scripts/azure/                … Azure リソースの作成・発行後の設定・削除スクリプト
 .vscode/mcp.json              … MCP クライアントの接続設定
 src/FunctionsTest/
   Program.cs / host.json / local.settings.json
   Functions/<トリガー種別>/    … 各関数
   Middleware/                 … isolated のミドルウェア
   Models/                     … 共通のペイロード
+docs/azure-verification.md    … 発行後（Azure 上）の検証手順
 docs/superpowers/             … 設計書・実装計画
 ```

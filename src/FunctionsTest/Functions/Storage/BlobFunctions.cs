@@ -31,7 +31,7 @@ public sealed class BlobFunctions(ILogger<BlobFunctions> logger)
     /// <summary>
     /// Blob トリガー（既定のポーリング方式）。
     /// 文字列で受け取り、名前はバインド式 {name} から取得する。
-    /// ※ Flex Consumption では Source = BlobTriggerSource.EventGrid が必須。
+    /// ※ Flex Consumption ではポーリング方式は使えない → BlobTriggerEventGrid を使う。
     /// </summary>
     [Function(nameof(BlobTrigger))]
     public void BlobTrigger(
@@ -39,6 +39,20 @@ public sealed class BlobFunctions(ILogger<BlobFunctions> logger)
         string name)
     {
         logger.LogInformation("BlobTrigger: name={Name}, length={Length}", name, content.Length);
+    }
+
+    /// <summary>
+    /// Blob トリガー（Event Grid 方式）。Flex Consumption ではこちらを使う。
+    /// ストレージの BlobCreated イベントを Event Grid 経由で受け取るため、遅延が小さい。
+    /// ローカルでは Event Grid サブスクリプションを作れないので、既定で無効にしている。
+    /// Azure 側の設定は scripts/azure/configure-after-publish.ps1 を参照。
+    /// </summary>
+    [Function(nameof(BlobTriggerEventGrid))]
+    public void BlobTriggerEventGrid(
+        [BlobTrigger("uploads/{name}", Source = BlobTriggerSource.EventGrid, Connection = "StorageConnection")] string content,
+        string name)
+    {
+        logger.LogInformation("BlobTriggerEventGrid: name={Name}, length={Length}", name, content.Length);
     }
 
     /// <summary>

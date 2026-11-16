@@ -1,7 +1,9 @@
 ### Azure Functions 検証用リクエスト集
 ### VS2026 では各リクエストの上に出る「要求の送信」をクリックして実行する
 
-@host = http://localhost:7071
+### 接続先は http-client.env.json の環境で切り替える（VS2026 右上の環境ドロップダウン）
+###   local : http://localhost:7071（キー不要）
+###   azure : scripts/azure/configure-after-publish.ps1 が生成する http-client.env.json.user の値を使う
 @api = {{host}}/api
 
 ############################################################
@@ -36,7 +38,7 @@ Content-Type: application/json
 { not json
 
 ### 認証レベル Function（ローカルではキー不要）
-GET {{api}}/secure
+GET {{api}}/secure?code={{functionKey}}
 
 ### 例外 → 500 とミドルウェアのエラーログを確認
 GET {{api}}/throw
@@ -160,7 +162,7 @@ GET {{api}}/cosmos/books/REPLACE_ID
 ############################################################
 
 ### CloudEvents スキーマ
-POST {{host}}/runtime/webhooks/EventGrid?functionName=EventGridCloudEventTrigger
+POST {{host}}/runtime/webhooks/EventGrid?functionName=EventGridCloudEventTrigger&code={{eventGridKey}}
 Content-Type: application/cloudevents+json
 aeg-event-type: Notification
 
@@ -176,7 +178,7 @@ aeg-event-type: Notification
 }
 
 ### Event Grid スキーマ（配列で送る）
-POST {{host}}/runtime/webhooks/EventGrid?functionName=EventGridSchemaTrigger
+POST {{host}}/runtime/webhooks/EventGrid?functionName=EventGridSchemaTrigger&code={{eventGridKey}}
 Content-Type: application/json
 aeg-event-type: Notification
 
@@ -246,6 +248,7 @@ hello signalr
 
 ### initialize
 POST {{host}}/runtime/webhooks/mcp
+x-functions-key: {{mcpKey}}
 Content-Type: application/json
 Accept: application/json, text/event-stream
 
@@ -253,6 +256,7 @@ Accept: application/json, text/event-stream
 
 ### ツール一覧（応答ヘッダー Mcp-Session-Id を付ける必要がある場合は追記する）
 POST {{host}}/runtime/webhooks/mcp
+x-functions-key: {{mcpKey}}
 Content-Type: application/json
 Accept: application/json, text/event-stream
 
@@ -260,6 +264,7 @@ Accept: application/json, text/event-stream
 
 ### ツール呼び出し
 POST {{host}}/runtime/webhooks/mcp
+x-functions-key: {{mcpKey}}
 Content-Type: application/json
 Accept: application/json, text/event-stream
 

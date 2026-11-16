@@ -16,6 +16,7 @@
 
     "TimerSchedule": "0 */1 * * * *",
 
+    "AzureWebJobs.BlobTriggerEventGrid.Disabled": "true",
     "AzureWebJobs.ServiceBusQueueTrigger.Disabled": "true",
     "AzureWebJobs.ServiceBusTopicTrigger.Disabled": "true",
     "AzureWebJobs.ServiceBusDeadLetterTrigger.Disabled": "true",
