@@ -15,7 +15,8 @@
     <!-- コア -->
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.52.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.1.0" />
-    <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="3.2.0" />
+    <!-- 3.x は OpenTelemetry ベースの別実装で、Worker.ApplicationInsights（2.x 系に依存）と混在すると起動時に落ちるため 2.x に固定 -->
+    <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.23.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.51.0" />
 
     <!-- トリガー / バインド拡張 -->
