@@ -103,6 +103,8 @@ Azure Functions（関数アプリ）の主なトリガー / バインドを一�
 
 Azure（Flex Consumption プラン）への発行、発行後の動作確認、費用の確認、後片付けまでの手順は **[docs/azure-verification.md](docs/azure-verification.md)** にまとめています。リソースの作成・設定・削除は `scripts/azure/` の PowerShell スクリプトで行えます。
 
+> 現在、`scripts/azure/` のスクリプトは権限の都合で検証保留です。管理者が作成した関数アプリに発行した場合は、**[docs/publish-checklist.md](docs/publish-checklist.md)**（ポータルだけで確認するチェックリスト）を使ってください。
+
 `http/FunctionsTest.http` は、VS2026 の環境ドロップダウンで `local` / `azure` を切り替えると、同じリクエストをローカルにも Azure にも送れます。
 
 ## 構成
