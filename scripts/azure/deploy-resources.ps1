@@ -1,4 +1,4 @@
-#Requires -Version 7.3
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     発行後の検証に使う Azure リソースを作成する（Flex Consumption の関数アプリ + 必要に応じて各サービス）。
@@ -27,9 +27,8 @@ param(
     [switch]$All
 )
 
-$ErrorActionPreference = "Stop"
-# az が失敗したらスクリプトを止める
-$PSNativeCommandUseErrorActionPreference = $true
+# 共通処理（az 失敗時の停止など。Windows PowerShell 5.1 / PowerShell 7 両対応）
+. (Join-Path $PSScriptRoot "_common.ps1")
 
 if ($All) { $ServiceBus = $EventHubs = $CosmosDb = $SignalR = $true }
 
@@ -141,6 +140,6 @@ Write-Host "[6/6] アプリ設定の反映" -ForegroundColor Cyan
 $settingArgs = $settings.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }
 az functionapp config appsettings set -n $names.FunctionApp -g $ResourceGroup --settings @settingArgs -o none
 
-$names | ConvertTo-Json | Set-Content -Path $statePath -Encoding utf8
+Write-Utf8File $statePath ($names | ConvertTo-Json)
 Write-Host "`n完了しました。リソース名を $statePath に保存しました。" -ForegroundColor Green
 Write-Host "次の手順: VS2026 で関数アプリ '$($names.FunctionApp)' に発行し、configure-after-publish.ps1 を実行してください。"

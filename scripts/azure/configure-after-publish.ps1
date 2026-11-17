@@ -1,4 +1,4 @@
-#Requires -Version 7.3
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     発行後にしかできない設定を行い、.http ファイル用のキーを出力する。
@@ -10,8 +10,8 @@
       - SignalR Service のアップストリーム URL（SignalR トリガー用）
     最後に http/http-client.env.json.user を生成し、VS2026 の .http から Azure 環境を叩けるようにする。
 #>
-$ErrorActionPreference = "Stop"
-$PSNativeCommandUseErrorActionPreference = $true
+# 共通処理（az 失敗時の停止など。Windows PowerShell 5.1 / PowerShell 7 両対応）
+. (Join-Path $PSScriptRoot "_common.ps1")
 
 $statePath = Join-Path $PSScriptRoot ".deploy-state.json"
 if (-not (Test-Path $statePath)) { throw "$statePath がありません。先に deploy-resources.ps1 を実行してください。" }
@@ -23,7 +23,8 @@ $hostName = az functionapp show -n $app -g $rg --query defaultHostName -o tsv
 Write-Host "関数アプリ: https://$hostName" -ForegroundColor Cyan
 
 Write-Host "`n[1/4] キーの取得" -ForegroundColor Cyan
-$keys = az functionapp keys list -n $app -g $rg | ConvertFrom-Json
+# 5.1 の ConvertFrom-Json は複数行を 1 つの文字列にまとめてから渡す必要がある
+$keys = (az functionapp keys list -n $app -g $rg) -join "`n" | ConvertFrom-Json
 $functionKey = $keys.functionKeys.default
 $system = $keys.systemKeys
 foreach ($name in "blobs_extension", "eventgrid_extension", "mcp_extension", "signalr_extension", "durabletask_extension") {
@@ -60,14 +61,15 @@ if ($s.SignalR) {
 
 Write-Host "[4/4] http/http-client.env.json.user の生成" -ForegroundColor Cyan
 $envUserPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "../../http/http-client.env.json.user"))
-@{
+$envJson = @{
     azure = @{
         host         = "https://$hostName"
         functionKey  = $functionKey
         eventGridKey = $system.eventgrid_extension
         mcpKey       = $system.mcp_extension
     }
-} | ConvertTo-Json -Depth 3 | Set-Content -Path $envUserPath -Encoding utf8
+} | ConvertTo-Json -Depth 3
+Write-Utf8File $envUserPath $envJson
 Write-Host "  $envUserPath（.gitignore 済み。キーを含むのでコミットしないこと）"
 
 Write-Host "`n完了しました。VS2026 で http/FunctionsTest.http を開き、環境を 'azure' に切り替えて実行してください。" -ForegroundColor Green

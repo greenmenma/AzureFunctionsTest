@@ -20,13 +20,19 @@
 |---|---|
 | Azure サブスクリプション | リソース グループを作れる権限（共同作成者以上） |
 | Azure CLI | `winget install Microsoft.AzureCLI` |
-| PowerShell 7.3 以上 | `winget install Microsoft.PowerShell`（スクリプトは `pwsh` で実行する） |
+| PowerShell | Windows 標準の Windows PowerShell 5.1、PowerShell 7 のどちらでも実行できる |
 | Visual Studio 2026 | 発行に使う。Azure アカウントでサインインしておく |
 
 ```powershell
 az login
 az account show --query "{name:name, id:id}" -o table   # 対象のサブスクリプションか確認
 # 違う場合: az account set --subscription <サブスクリプション ID>
+```
+
+スクリプトの実行が「このシステムではスクリプトの実行が無効になっている」で拒否される場合は、初回のみ次を実行してください（現在のユーザーにだけ、ローカルのスクリプトの実行を許可します）。
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
 ## 1. 検証の範囲（ホスティング プラン）
@@ -50,11 +56,11 @@ az account show --query "{name:name, id:id}" -o table   # 対象のサブスク�
 cd scripts/azure
 
 # 最小構成: 関数アプリ（Flex Consumption）+ ストレージ + Application Insights
-pwsh ./deploy-resources.ps1
+./deploy-resources.ps1
 
 # 追加サービスも作る場合（必要なものだけ指定）
-pwsh ./deploy-resources.ps1 -ServiceBus -EventHubs -CosmosDb -SignalR
-# すべて: pwsh ./deploy-resources.ps1 -All
+./deploy-resources.ps1 -ServiceBus -EventHubs -CosmosDb -SignalR
+# すべて: ./deploy-resources.ps1 -All
 ```
 
 | パラメーター | 既定値 | 説明 |
@@ -93,7 +99,7 @@ pwsh ./deploy-resources.ps1 -ServiceBus -EventHubs -CosmosDb -SignalR
 拡張機能のシステム キーは**発行してホストが起動した後**に作られます。キーを使う設定は、発行後に次のスクリプトで行います。
 
 ```powershell
-pwsh ./configure-after-publish.ps1
+./configure-after-publish.ps1
 ```
 
 | 処理 | 内容 |
@@ -199,7 +205,7 @@ $conn = az storage account show-connection-string -n $st --query connectionStrin
 ## 7. 後片付け
 
 ```powershell
-pwsh ./remove-resources.ps1      # 確認のためリソース グループ名の入力を求められる
+./remove-resources.ps1      # 確認のためリソース グループ名の入力を求められる
 ```
 
 リソース グループごと削除するので、作ったリソースの課金はすべて止まります。削除と同時に `.deploy-state.json` と `http/http-client.env.json.user` も消えます。
