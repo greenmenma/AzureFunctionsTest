@@ -100,33 +100,9 @@ union traces, exceptions
 > **ログ ストリームに「接続されました」しか出ない理由**: Flex Consumption / 従量課金ではリクエストがないとインスタンスが 0 台になり、ログが出ません。
 > ログ ストリームを開いたまま、別タブで 1-2 / 1-3 の URL を開くと、起動時のログが流れます。それでも何も出ない場合は、Application Insights が紐付いていない（3-4）可能性が高いです。
 
-### Application Insights の見方（初めて使う場合）
+### Application Insights の見方
 
-Application Insights は、**有効にした後に起きたこと**しか記録しません。そのため、まず起動をやり直してログを出させてから見ます。
-
-1. **起動をやり直す**: 関数アプリ →「概要」→「再起動」。1 分ほど待ってから、ブラウザーで `https://<既定のドメイン>/api/hello` を 1 回開く（503 でもよい。インスタンスを起こすため）
-2. **2〜5 分待つ**: ログが Application Insights に届くまで数分かかる
-3. **Application Insights を開く**: 関数アプリの左メニュー「監視」→「Application Insights」→「Application Insights データの表示」
-4. **ログ画面を開く**: Application Insights の左メニュー「監視」→「ログ」
-   - 最初に「クエリ」のサンプル一覧が出たら、右上の × で閉じる
-   - 画面右上の切り替えが「シンプル モード」なら「KQL モード」に変える
-5. **クエリを貼り付けて「実行」**: 起動時のログ（エラー以外も含む）を古い順に表示する
-
-```kusto
-union traces, exceptions
-| where timestamp > ago(30m)
-| project timestamp, itemType, severityLevel, message, outerMessage, innermostMessage
-| order by timestamp asc
-| take 200
-```
-
-6. **見るポイント**
-   - `severityLevel` が **3（Error）・4（Critical）** の行と、`itemType` が **exception** の行
-   - `Starting Host`、`Worker process started`、`Host started`、`Job host stopped` などの起動・停止の流れ
-   - 0 件なら、手順 2 の待ち時間が足りないか、まだインスタンスが起動していない（手順 1 からやり直す）
-7. **結果を共有する**: 結果の表の上にある「エクスポート」→「CSV（表示列）」でファイルに保存するか、スクリーンショットを撮る。キーや接続文字列が写っていたら伏せる
-
-> クエリを書かずに見たい場合は、Application Insights の左メニュー「調査」→「失敗」→「例外」タブでも、例外の一覧と詳細（スタック トレース）を確認できます。
+初めて使う場合の操作手順は [application-insights-guide.md](application-insights-guide.md) にまとめています。
 
 ---
 
