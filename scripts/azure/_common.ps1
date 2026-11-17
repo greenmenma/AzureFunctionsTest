@@ -34,7 +34,10 @@ function az {
     if ($LASTEXITCODE -ne 0) {
         # 接続文字列などの秘密情報が出ないよう、サブコマンド名までしか表示しない
         $cmd = ($args | Select-Object -First 3) -join " "
-        throw "az $cmd ... が失敗しました（終了コード $LASTEXITCODE）。上に表示されたエラーを確認してください。"
+        # 例外の「発生場所」はこのファイルになってしまうため、呼び出し元のスクリプトと行番号を添える
+        $caller = (Get-PSCallStack)[1]
+        $where = if ($caller.ScriptName) { "{0} の {1} 行目" -f (Split-Path $caller.ScriptName -Leaf), $caller.ScriptLineNumber } else { "対話入力" }
+        throw "az $cmd ... が失敗しました（終了コード $LASTEXITCODE、$where）。原因はこの上に表示されている az の ERROR: 行を確認してください。"
     }
 }
 
