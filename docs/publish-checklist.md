@@ -82,6 +82,19 @@ union traces, exceptions
 | take 50
 ```
 
+5-1 で `ObjectDisposedException`（`JobHost.StartAsync`、「inactive host」）が出ている場合、これは**二次的なエラー**です（起動に失敗したホストを再起動するときに、破棄済みの古いホストで出る）。
+本当の原因はその前に出ている最初のエラーなので、次のクエリで古い順に確認します。
+
+```kusto
+union traces, exceptions
+| where timestamp > ago(24h)
+| where severityLevel >= 3 or itemType == "exception"
+| where coalesce(innermostMessage, message) !contains "disposed"
+| project timestamp, itemType, message, outerMessage, innermostMessage
+| order by timestamp asc
+| take 30
+```
+
 結果が 0 件の場合は、条件を外した `traces | where timestamp > ago(1h) | order by timestamp desc | take 50` で、起動時のログ（`Starting Host`、`Worker process started` など）が出ているかを確認します。
 
 > **ログ ストリームに「接続されました」しか出ない理由**: Flex Consumption / 従量課金ではリクエストがないとインスタンスが 0 台になり、ログが出ません。
