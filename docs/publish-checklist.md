@@ -27,6 +27,9 @@
 | 1-3 | HTTP 関数を直接呼ぶ | ブラウザーで `https://<既定のドメイン>/api/hello?name=test` を開く | `{"message":"Hello, test!"}` が返る（404 なら関数が読み込まれていない） | |
 
 > 1-3 で応答が返るなら関数は動いています。一覧に出ないのはポータルの表示だけの問題なので、「概要」→「再起動」してから、1〜2 分待ってページを再読み込みしてください。
+>
+> **1-2 は表示されるのに 1-3 が 502 / 503 になる場合**: ホスト（Functions ランタイム）は動いていますが、関数を実行する .NET のワーカー プロセスが起動できていないか、起動直後に異常終了しています。
+> Flex Consumption ではコールド スタート直後に一時的に 503 になることもあるので、30 秒ほど待って再読み込みし、それでも同じなら 5 章でエラーの内容を確認します。
 
 ## 2. 関数アプリの種類（このプロジェクトに合っているか）
 
@@ -35,7 +38,7 @@
 | 2-1 | ホスティング プラン | 「概要」→ App Service プラン / 価格レベル | Flex Consumption、Premium、App Service（Dedicated）、Windows の従量課金のいずれか。**Linux の従量課金（Consumption）は .NET 10 に対応していない** | |
 | 2-2 | OS | 「概要」→ オペレーティング システム | Windows / Linux（記録だけ） | |
 | 2-3 | ランタイム スタック | Flex Consumption: 「設定」→「構成」（ランタイム）<br>それ以外: 「設定」→「構成」→「全般設定」→ スタックの設定 | **.NET**、バージョン **10（isolated / 分離ワーカー）** | |
-| 2-4 | Functions のバージョン | 「概要」→ ランタイム バージョン | 4.x | |
+| 2-4 | Functions のバージョン | 「概要」→ ランタイム バージョン | 4.x（**Flex Consumption では表示されないのが正常**。常に 4.x で動く） | |
 
 **2-3 が .NET 8 などの場合**: いちばん可能性の高い原因です。.NET 10 のプロジェクトを .NET 8 のアプリに発行するとワーカーが起動できず、関数は 1 つも表示されません。
 スタックのバージョンを 10 に変更できるなら変更して保存します（権限がなければ管理者に依頼してください）。
@@ -50,7 +53,7 @@
 | 3-2 | `FUNCTIONS_EXTENSION_VERSION` | `~4`（Flex Consumption では存在しないのが正常） | |
 | 3-3 | `AzureWebJobsStorage`（または `AzureWebJobsStorage__accountName`） | 存在する | |
 | 3-4 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | 存在する（ないとログ ストリームに何も出ない。下記 5 を参照） | |
-| 3-5 | `WEBSITE_RUN_FROM_PACKAGE` | 存在する場合は値を記録（`1` または URL） | |
+| 3-5 | `WEBSITE_RUN_FROM_PACKAGE` | 存在する場合は値を記録（`1` または URL）。**Flex Consumption では存在しないのが正常** | |
 
 ## 4. 発行が本当に反映されたか
 
@@ -66,7 +69,20 @@
 |---|---|---|---|---|
 | 5-1 | 自動診断 | 「問題の診断と解決」→「Functions app down or reporting errors」（関数アプリがダウンしている、またはエラーを報告している） | 赤や黄色の項目。特に「Functions runtime」「Worker」関連のエラー | |
 | 5-2 | ログ ストリーム | 「監視」→「ログ ストリーム」 | 「接続されました」の後に何も出ない場合は、3-4 の Application Insights が未設定か、インスタンスが停止中（下記） | |
-| 5-3 | Application Insights | 「監視」→「Application Insights」→ リソースを開く →「ログ」で `traces \| order by timestamp desc` | `Error indexing`、`Worker failed`、`Microsoft.Azure.WebJobs.Script` などのエラー | |
+| 5-3 | Application Insights | 「監視」→「Application Insights」→ リソースを開く →「ログ」で下のクエリを実行 | `Error indexing`、`Worker failed`、`exited with code`、`Microsoft.Azure.WebJobs.Script` などのエラー | |
+
+5-3 のクエリ（直近 1 時間の警告・エラーと例外。右上の時間範囲は「クエリで設定」のままにする）:
+
+```kusto
+union traces, exceptions
+| where timestamp > ago(1h)
+| where severityLevel >= 2 or itemType == "exception"
+| project timestamp, itemType, severityLevel, message, outerMessage, innermostMessage
+| order by timestamp desc
+| take 50
+```
+
+結果が 0 件の場合は、条件を外した `traces | where timestamp > ago(1h) | order by timestamp desc | take 50` で、起動時のログ（`Starting Host`、`Worker process started` など）が出ているかを確認します。
 
 > **ログ ストリームに「接続されました」しか出ない理由**: Flex Consumption / 従量課金ではリクエストがないとインスタンスが 0 台になり、ログが出ません。
 > ログ ストリームを開いたまま、別タブで 1-2 / 1-3 の URL を開くと、起動時のログが流れます。それでも何も出ない場合は、Application Insights が紐付いていない（3-4）可能性が高いです。
@@ -75,7 +91,7 @@
 
 ## 6. 関数が表示されるようになった後に追加するアプリ設定
 
-このプロジェクトは、次のアプリ設定がないと一部の関数がエラーになります（関数一覧に表示されるかどうかには影響しません）。
+このプロジェクトは、次のアプリ設定がないと一部の関数がエラーになります（通常は該当する関数だけがエラーになり、ほかの関数は動きます。ただし関数が 1 つも動かない場合も、切り分けのため先に設定しておくことをおすすめします）。
 「設定」→「環境変数」→「アプリ設定」→「+ 追加」で設定し、最後に「適用」を押します。
 
 | 名前 | 値 | 理由 |
