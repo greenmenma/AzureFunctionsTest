@@ -18,7 +18,7 @@
 
 | 必要なもの | 備考 |
 |---|---|
-| Azure サブスクリプション | リソース グループを作れる権限（共同作成者以上） |
+| Azure サブスクリプション | リソース グループを作れる権限（サブスクリプションの共同作成者以上）。ない場合は下記「権限が足りない場合」 |
 | Azure CLI | `winget install Microsoft.AzureCLI` |
 | PowerShell | Windows 標準の Windows PowerShell 5.1、PowerShell 7 のどちらでも実行できる |
 | Visual Studio 2026 | 発行に使う。Azure アカウントでサインインしておく |
@@ -34,6 +34,34 @@ az account show --query "{name:name, id:id}" -o table   # 対象のサブスク�
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
+
+### 権限が足りない場合
+
+`az group create` で `AuthorizationFailed` になる場合、サブスクリプションでリソース グループを作る権限がありません。サブスクリプション全体の権限がなくても、**検証専用のリソース グループと、そのグループに対する共同作成者ロール**があれば検証できます。管理者に次の 2 点を依頼してください。
+
+1. **検証専用**のリソース グループの作成と、自分への「共同作成者（Contributor）」ロールの割り当て（スコープはそのリソース グループ）
+   - 後片付けでグループ内のリソースを**すべて**削除するので、ほかの用途と共用しないグループにしてもらう
+2. リソース プロバイダーの登録（サブスクリプションで未登録のもの。登録はサブスクリプションの権限が必要）
+
+```powershell
+# 管理者が実行する例（作るサービスに応じて取捨選択）
+az group create -n rg-functionstest -l japaneast
+az role assignment create --assignee <利用者のメール アドレス> --role Contributor `
+    --scope /subscriptions/<サブスクリプション ID>/resourceGroups/rg-functionstest
+foreach ($p in "Microsoft.Web", "Microsoft.Storage", "Microsoft.Insights", "Microsoft.OperationalInsights",
+               "Microsoft.EventGrid", "Microsoft.ServiceBus", "Microsoft.EventHub",
+               "Microsoft.DocumentDB", "Microsoft.SignalRService") {
+    az provider register -n $p
+}
+```
+
+用意してもらったら、そのグループ名を指定してリソースを作成します（既存のグループは作成をスキップします）。
+
+```powershell
+./deploy-resources.ps1 -ResourceGroup <用意してもらったグループ名>
+```
+
+> この場合、後片付け（手順 7）ではリソース グループ自体は削除せず、**中のリソースだけ**を削除します。
 
 ## 1. 検証の範囲（ホスティング プラン）
 
@@ -65,7 +93,7 @@ cd scripts/azure
 
 | パラメーター | 既定値 | 説明 |
 |---|---|---|
-| `-ResourceGroup` | `rg-functionstest` | リソース グループ名 |
+| `-ResourceGroup` | `rg-functionstest` | リソース グループ名。既に存在する場合は作成をスキップしてそのまま使う |
 | `-Location` | `japaneast` | リージョン |
 | `-Prefix` | `fntest` + 乱数 4 桁 | リソース名の接頭辞（グローバルに一意である必要がある） |
 | `-MaximumInstanceCount` | `10` | Flex の最大インスタンス数。**費用の上限を抑えるため小さめ** |
@@ -208,7 +236,7 @@ $conn = az storage account show-connection-string -n $st --query connectionStrin
 ./remove-resources.ps1      # 確認のためリソース グループ名の入力を求められる
 ```
 
-リソース グループごと削除するので、作ったリソースの課金はすべて止まります。削除と同時に `.deploy-state.json` と `http/http-client.env.json.user` も消えます。
+リソース グループごと削除するので、作ったリソースの課金はすべて止まります（既存のリソース グループを指定した場合は、グループは残して中のリソースをすべて削除します）。削除と同時に `.deploy-state.json` と `http/http-client.env.json.user` も消えます。
 
 > Application Insights を含め、すべて同じリソース グループに作っているため、消し忘れは起きません。ポータルの「リソース グループ」一覧で `rg-functionstest` が消えたことを確認してください。
 

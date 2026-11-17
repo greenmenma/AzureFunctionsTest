@@ -8,10 +8,15 @@
     configure-after-publish.ps1 / remove-resources.ps1 から参照する。
     すべて 1 つのリソース グループに作るので、検証後はグループごと削除すれば課金が止まる。
 
+    サブスクリプションの権限がなく、リソース グループを作れない場合は、
+    管理者に作ってもらった検証専用のリソース グループ名を -ResourceGroup に指定する
+    （そのグループの共同作成者ロールがあれば実行できる。既存のグループは作成をスキップする）。
+
 .EXAMPLE
     ./deploy-resources.ps1                          # 関数アプリ + ストレージ + Application Insights のみ
     ./deploy-resources.ps1 -ServiceBus -EventHubs   # + Service Bus / Event Hubs
     ./deploy-resources.ps1 -All                     # Service Bus / Event Hubs / Cosmos DB / SignalR をすべて
+    ./deploy-resources.ps1 -ResourceGroup rg-xxx    # 管理者が用意した既存のリソース グループを使う
 #>
 param(
     [string]$ResourceGroup = "rg-functionstest",
@@ -37,6 +42,8 @@ $names = [ordered]@{
     ResourceGroup = $ResourceGroup
     Location      = $Location
     FunctionApp   = "$Prefix-func"
+    LogAnalytics  = "$Prefix-log"
+    AppInsights   = "$Prefix-appi"
     Storage       = ($Prefix -replace '[^a-z0-9]', '') + "st"
     ServiceBus    = if ($ServiceBus) { "$Prefix-sb" } else { $null }
     EventHubs     = if ($EventHubs) { "$Prefix-eh" } else { $null }
@@ -50,17 +57,39 @@ $names.GetEnumerator() | Where-Object Value | ForEach-Object { Write-Host ("  {0
 # 拡張機能が必要なコマンド（application-insights 等）を確認なしでインストールする
 az config set extension.use_dynamic_install=yes_without_prompt --only-show-errors | Out-Null
 
-Write-Host "`n[1/6] リソース グループ" -ForegroundColor Cyan
-az group create -n $ResourceGroup -l $Location --tags purpose=functions-test -o none
+Write-Host "`n[1/7] リソース グループ" -ForegroundColor Cyan
+$rgExists = (az group exists -n $ResourceGroup) -eq "true"
+if ($rgExists) {
+    # 管理者が用意したグループなど。作成（サブスクリプションの権限が必要）はスキップする
+    Write-Host "  既存のリソース グループ '$ResourceGroup' を使います（後片付けではグループ内のリソースだけを削除します）"
+} else {
+    try {
+        az group create -n $ResourceGroup -l $Location --tags purpose=functions-test -o none
+    } catch {
+        throw "リソース グループ '$ResourceGroup' を作成できませんでした。サブスクリプションの権限がない場合は、管理者に検証専用のリソース グループを作成してもらい（共同作成者ロールを付与）、-ResourceGroup <グループ名> を指定して再実行してください。詳細は docs/azure-verification.md の「権限が足りない場合」を参照。"
+    }
+}
+# 後片付けで「グループごと削除」と「中身だけ削除」を切り替えるために記録する
+$names.CreatedResourceGroup = -not $rgExists
 
-Write-Host "[2/6] ストレージ アカウント（AzureWebJobsStorage / StorageConnection）" -ForegroundColor Cyan
+Write-Host "[2/7] ストレージ アカウント（AzureWebJobsStorage / StorageConnection）" -ForegroundColor Cyan
 az storage account create -n $names.Storage -g $ResourceGroup -l $Location `
     --sku Standard_LRS --allow-blob-public-access false --min-tls-version TLS1_2 -o none
 $storageConn = az storage account show-connection-string -n $names.Storage -g $ResourceGroup --query connectionString -o tsv
 
-Write-Host "[3/6] 関数アプリ（Flex Consumption / .NET 10 isolated / Application Insights 付き）" -ForegroundColor Cyan
+Write-Host "[3/7] Log Analytics / Application Insights" -ForegroundColor Cyan
+# az functionapp create に自動作成させると、Log Analytics ワークスペースが別のリソース グループ
+# （DefaultResourceGroup-<リージョン>）に作られ、リソース グループ単位の権限では失敗する。
+# そのため同じリソース グループに自分で作ってから関数アプリに紐付ける
+az monitor log-analytics workspace create -n $names.LogAnalytics -g $ResourceGroup -l $Location -o none
+$workspaceId = az monitor log-analytics workspace show -n $names.LogAnalytics -g $ResourceGroup --query id -o tsv
+az monitor app-insights component create --app $names.AppInsights -g $ResourceGroup -l $Location `
+    --workspace $workspaceId --application-type web -o none
+
+Write-Host "[4/7] 関数アプリ（Flex Consumption / .NET 10 isolated）" -ForegroundColor Cyan
 az functionapp create -n $names.FunctionApp -g $ResourceGroup `
     --storage-account $names.Storage `
+    --app-insights $names.AppInsights `
     --flexconsumption-location $Location `
     --runtime dotnet-isolated --runtime-version 10.0 `
     --instance-memory 2048 `
@@ -99,7 +128,7 @@ foreach ($svc in $serviceFunctions.Keys) {
     }
 }
 
-Write-Host "[4/6] メッセージング（Service Bus / Event Hubs）" -ForegroundColor Cyan
+Write-Host "[5/7] メッセージング（Service Bus / Event Hubs）" -ForegroundColor Cyan
 if ($ServiceBus) {
     # トピックを使うため Standard が必要（Basic はキューのみ）
     az servicebus namespace create -n $names.ServiceBus -g $ResourceGroup -l $Location --sku Standard -o none
@@ -119,7 +148,7 @@ if ($EventHubs) {
         --namespace-name $names.EventHubs -g $ResourceGroup -n RootManageSharedAccessKey --query primaryConnectionString -o tsv
 }
 
-Write-Host "[5/6] データ / リアルタイム（Cosmos DB / SignalR）" -ForegroundColor Cyan
+Write-Host "[6/7] データ / リアルタイム（Cosmos DB / SignalR）" -ForegroundColor Cyan
 if ($CosmosDb) {
     # サーバーレス: 使った RU とストレージだけ課金される（作成に数分かかる）
     az cosmosdb create -n $names.CosmosDb -g $ResourceGroup --locations regionName=$Location `
@@ -136,7 +165,7 @@ if ($SignalR) {
     $settings.SignalRConnection = az signalr key list -n $names.SignalR -g $ResourceGroup --query primaryConnectionString -o tsv
 }
 
-Write-Host "[6/6] アプリ設定の反映" -ForegroundColor Cyan
+Write-Host "[7/7] アプリ設定の反映" -ForegroundColor Cyan
 $settingArgs = $settings.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }
 az functionapp config appsettings set -n $names.FunctionApp -g $ResourceGroup --settings @settingArgs -o none
 
