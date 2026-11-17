@@ -144,3 +144,31 @@ AzureWebJobs.SignalRConnectionsTrigger.Disabled
 Flex Consumption の場合は、ポーリング方式の Blob トリガーが使えないため `AzureWebJobs.BlobTrigger.Disabled` = `true` も追加します。
 
 これで、追加のサービスなしで HTTP / Timer / Queue / Blob（出力・入力）/ Table / Durable / MCP / Event Grid（Webhook への直接 POST）を Azure 上で確認できます。
+
+---
+
+## 7. Application Insights が使えない場合の切り分け
+
+ログが見られない場合は、設定を変えて「どこまで動くか」を確かめ、原因を絞り込みます。
+各段階で、アプリ設定を保存 →「概要」→「再起動」→ 1〜2 分待って、1-3（`/api/hello`）と関数一覧を確認します。
+
+### アプリ設定をまとめて追加する方法
+
+「設定」→「環境変数」→「アプリ設定」→「詳細設定の編集」を開くと、既存の設定が JSON の配列で表示されます。
+**既存の内容は消さずに**、最後の `}` の後ろに `,` を付けてから、下記ファイルの `[` と `]` の間の行を貼り付け、「OK」→「適用」を押します。
+（同じ名前の設定が既にある場合は、重複させずに値だけ合わせてください）
+
+| 段階 | 貼り付けるファイル | 内容 | 結果 |
+|---|---|---|---|
+| 7-1 | [appsettings/flex-basic.json](appsettings/flex-basic.json) | 6 章の設定一式（`StorageConnection` の値は `AzureWebJobsStorage` と同じ値に置き換える） | |
+| 7-2 | [appsettings/isolate-http-only.json](appsettings/isolate-http-only.json) | 7-1 に加えて、`HttpHello` 以外の関数をすべて無効にする | |
+
+結果の読み方:
+
+| 7-1 | 7-2 | 考えられる原因 | 次の対応 |
+|---|---|---|---|
+| 動く | — | アプリ設定の不足（6 章の設定がなかった） | 完了。7-2 は不要 |
+| 動かない | 動く | 特定の関数（トリガー）が起動を妨げている | 7-2 で無効にした関数を、フォルダー単位（Durable、Mcp、Timer など）で少しずつ有効に戻して特定する |
+| 動かない | 動かない | 関数ではなく、拡張機能の読み込みやアプリ全体の問題 | プロジェクト側で拡張機能を減らした最小構成を発行して確認する（Claude に依頼） |
+
+> 7-2 の確認が終わったら、追加した `AzureWebJobs.*.Disabled` のうち不要なものを削除して元に戻します。
