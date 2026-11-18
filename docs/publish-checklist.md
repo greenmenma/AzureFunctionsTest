@@ -116,6 +116,16 @@ union traces, exceptions
 | `StorageConnection` | `AzureWebJobsStorage` と同じ値 | Queue / Blob / Table 関数の接続先 |
 | `TimerSchedule` | `0 */5 * * * *` | Timer の間隔（5 分。実行回数 = 課金を抑える） |
 | `KafkaBrokerList` | `localhost:9092` | Kafka は対象外。バインド式を解決するためのダミー値 |
+| `ServiceBusConnection` | `Endpoint=sb://dummy.servicebus.windows.net/;SharedAccessKeyName=dummy;SharedAccessKey=ZHVtbXk=` | ダミー値（下記） |
+| `EventHubsConnection` | `Endpoint=sb://dummy.servicebus.windows.net/;SharedAccessKeyName=dummy;SharedAccessKey=ZHVtbXk=` | ダミー値（下記） |
+| `CosmosDbConnection` | `AccountEndpoint=https://dummy.documents.azure.com:443/;AccountKey=ZHVtbXk=;` | ダミー値（下記） |
+| `SqlConnection` | `Server=dummy;Database=dummy;` | ダミー値（下記） |
+| `RabbitMQConnection` | `amqp://dummy:dummy@localhost:5672` | ダミー値（下記） |
+| `SignalRConnection` | `Endpoint=https://dummy.service.signalr.net;AccessKey=ZHVtbXlrZXlkdW1teWtleWR1bW15a2V5ZHVtbXlrZXk=;Version=1.0;` | ダミー値（下記） |
+
+> **接続文字列のダミー値について**: Functions ランタイムは、`Disabled = true` で無効にした関数でも、起動時に接続文字列の設定があるかを確認します。
+> 設定がないと「`EventHub account connection string with name 'EventHubsConnection' does not exist in the settings`」のようなエラーが出ます。
+> 無効にした関数は接続しないので、形式だけ正しいダミー値を入れておけばエラーは出なくなります（実際にそのサービスを使うときは、本物の接続文字列に置き換えて関数を有効にします）。
 
 `AzureWebJobsStorage` がなく `AzureWebJobsStorage__accountName` だけある場合（マネージド ID 接続）は、代わりに `StorageConnection__accountName` に同じ値を設定します。この場合、関数アプリの ID にストレージの「BLOB / キュー / テーブル データ共同作成者」ロールが必要です（管理者に確認）。
 
