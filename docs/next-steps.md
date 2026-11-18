@@ -45,6 +45,7 @@ Azure ポータル → 関数アプリ →「設定」→「環境変数」→�
 | 3-3 | **既存の内容は消さずに**、最後の `}` の後ろに `,` を付け、[appsettings/flex-basic.json](appsettings/flex-basic.json) の `[` と `]` の間の行（31 行）を貼り付ける | 同じ名前の設定が既にある場合は、重複させずに値だけ合わせる | |
 | 3-4 | 貼り付けた `StorageConnection` の値 `<AzureWebJobsStorage と同じ値に置き換える>` を、`AzureWebJobsStorage` の値に書き換える | `AzureWebJobsStorage` がなく `AzureWebJobsStorage__accountName` しかない場合は、名前を `StorageConnection__accountName` に変えて同じ値にする | |
 | 3-5 | 「OK」→ 画面下の「適用」→「確認」 | 保存されたメッセージが出る | |
+| 3-6 | 「アプリ設定」タブの一覧で、`StorageConnection`・`CosmosDbConnection`・`KafkaBrokerList`・`AzureWebJobs.BlobTrigger.Disabled` を検索する | 4 つとも表示される。**「接続文字列」タブに入っていないこと**（そこに入れた値は別名の環境変数になり、関数から参照できない）。名前の大文字・小文字も一致していること | |
 
 `flex-basic.json` で追加される設定:
 
