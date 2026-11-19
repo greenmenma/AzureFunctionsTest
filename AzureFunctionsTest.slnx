@@ -1,4 +1,44 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="README.md" />
+    <File Path="docker-compose.yml" />
+    <File Path="nuget.config" />
+  </Folder>
+  <Folder Name="/.vscode/">
+    <File Path=".vscode/mcp.json" />
+  </Folder>
+  <Folder Name="/docs/">
+    <File Path="docs/verification-guide.md" />
+    <File Path="docs/next-steps.md" />
+    <File Path="docs/publish-checklist.md" />
+    <File Path="docs/application-insights-guide.md" />
+    <File Path="docs/azure-verification.md" />
+  </Folder>
+  <Folder Name="/docs/appsettings/">
+    <File Path="docs/appsettings/flex-basic.json" />
+    <File Path="docs/appsettings/isolate-http-only.json" />
+  </Folder>
+  <Folder Name="/docs/superpowers/">
+    <File Path="docs/superpowers/plans/2026-11-16-azure-functions-trigger-catalog.md" />
+    <File Path="docs/superpowers/specs/2026-11-16-azure-functions-trigger-catalog-design.md" />
+  </Folder>
+  <Folder Name="/emulators/">
+    <File Path="emulators/eventhubs/Config.json" />
+    <File Path="emulators/servicebus/Config.json" />
+    <File Path="emulators/signalr/settings.json" />
+    <File Path="emulators/sql/init.sql" />
+  </Folder>
+  <Folder Name="/http/">
+    <File Path="http/FunctionsTest.http" />
+    <File Path="http/http-client.env.json" />
+  </Folder>
+  <Folder Name="/scripts/">
+    <File Path="scripts/azure/_common.ps1" />
+    <File Path="scripts/azure/configure-after-publish.ps1" />
+    <File Path="scripts/azure/deploy-resources.ps1" />
+    <File Path="scripts/azure/remove-resources.ps1" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/FunctionsTest/FunctionsTest.csproj" />
   </Folder>
