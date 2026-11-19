@@ -103,7 +103,9 @@ Azure Functions（関数アプリ）の主なトリガー / バインドを一�
 
 Azure（Flex Consumption プラン）への発行、発行後の動作確認、費用の確認、後片付けまでの手順は **[docs/azure-verification.md](docs/azure-verification.md)** にまとめています。リソースの作成・設定・削除は `scripts/azure/` の PowerShell スクリプトで行えます。
 
-> **次にやること**は **[docs/next-steps.md](docs/next-steps.md)** にまとめています（発行から関数一覧の確認まで）。
+> **今後の検証は [docs/verification-guide.md](docs/verification-guide.md) だけを見て進めてください**（資料の整理表と、関数を 1 つずつ確認する手順をまとめています）。
+>
+> 発行から関数一覧の確認までの手順は [docs/next-steps.md](docs/next-steps.md) です（完了済み）。
 >
 > 現在、`scripts/azure/` のスクリプトは権限の都合で検証保留です。管理者が作成した関数アプリに発行した場合は、**[docs/publish-checklist.md](docs/publish-checklist.md)**（ポータルだけで確認するチェックリスト）を使ってください。ログの確認方法は **[docs/application-insights-guide.md](docs/application-insights-guide.md)** を参照してください。
 
@@ -125,6 +127,7 @@ src/FunctionsTest/
   Functions/<トリガー種別>/    … 各関数
   Middleware/                 … isolated のミドルウェア
   Models/                     … 共通のペイロード
-docs/azure-verification.md    … 発行後（Azure 上）の検証手順
+docs/verification-guide.md    … Azure 上での検証手順書（今後はこれを使う）
+docs/azure-verification.md    … az スクリプトを使う検証手順（保留中）
 docs/superpowers/             … 設計書・実装計画
 ```
