@@ -34,15 +34,26 @@ public sealed class TableFunctions(ILogger<TableFunctions> logger)
         };
     }
 
-    /// <summary>Table 入力（1 件）: PartitionKey / RowKey を指定して取得する。</summary>
+    /// <summary>
+    /// Table 入力（1 件）: PartitionKey / RowKey を指定して取得する。
+    /// ※ TableInput で POCO（SampleEntity）に直接バインドする書き方は Azure 上で 500 になったため、
+    ///   TableClient を受け取り、存在しない場合も例外にならない GetEntityIfExistsAsync で取得する。
+    /// </summary>
     [Function(nameof(TableGetOne))]
-    public IActionResult TableGetOne(
+    public async Task<IActionResult> TableGetOne(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "tables/{partitionKey}/{rowKey}")] HttpRequest req,
-        [TableInput("SampleTable", "{partitionKey}", "{rowKey}", Connection = "StorageConnection")] SampleEntity? entity)
+        string partitionKey,
+        string rowKey,
+        [TableInput("SampleTable", Connection = "StorageConnection")] TableClient table)
     {
-        return entity is null
-            ? new NotFoundResult()
-            : new OkObjectResult(new { entity.PartitionKey, entity.RowKey, entity.Text, entity.Timestamp });
+        var response = await table.GetEntityIfExistsAsync<SampleEntity>(partitionKey, rowKey);
+        if (!response.HasValue || response.Value is null)
+        {
+            return new NotFoundObjectResult(new { error = $"{partitionKey}/{rowKey} は存在しません" });
+        }
+
+        var entity = response.Value;
+        return new OkObjectResult(new { entity.PartitionKey, entity.RowKey, entity.Text, entity.Timestamp });
     }
 
     /// <summary>Table 入力（SDK 型 TableClient）: パーティション内を一覧する。</summary>
